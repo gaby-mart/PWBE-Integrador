@@ -17,7 +17,7 @@ router.register(r'microcontrollers', MicrocontrollerViewSet, basename='microcont
 router.register(r'measurement-units', MeasuredUnitViewSet, basename='measurement-unit')
 router.register(r'sensor-models', SensorModelViewSet, basename='sensor-models')
 router.register(r'sensors', SensorViewSet, basename='sensors')
-router.register(r'sensor-readings', SensorViewSet, basename='sensor-readings')
+router.register(r'sensor-readings', SensorReadingViewSet, basename='sensor-readings')
 
 urlpatterns = [
     path('', include(router.urls)),

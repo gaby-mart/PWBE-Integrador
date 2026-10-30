@@ -32,29 +32,37 @@ class UserSerializer(serializers.ModelSerializer):
         return instance  
 
 class LaboratorySerializer(serializers.ModelSerializer):
-    model = Laboratory
-    field = '__all__'
+    class Meta:
+        model = Laboratory
+        fields = '__all__'
 
 class MicrocontrollerModelSerializer(serializers.ModelSerializer):
-    model = MicrocontrollerModel
-    field = '__all__'
+    class Meta:
+        model = MicrocontrollerModel
+        fields = '__all__'
 
 class MicrocontrollerSerializer(serializers.ModelSerializer):
-    model = Microcontroller
-    field = '__all__'
+    class Meta:
+        model = Microcontroller
+        fields = '__all__'
 
 class MeasuredUnitSerializer(serializers.ModelSerializer):
-    model = MeasurementUnit
-    field = '__all__'
+    class Meta:
+        model = MeasurementUnit
+        fields = '__all__'
 
 class SensorModelSerializer(serializers.ModelSerializer):
-    model = SensorModel
-    field = '__all__'
+    class Meta:
+        model = SensorModel
+        fields = '__all__'
 
 class SensorSerializer(serializers.ModelSerializer):
-    model = Sensor
-    field = '__all__'
+    class Meta:
+        model = Sensor
+        fields = '__all__'
 
 class SensorReadingSerializer(serializers.ModelSerializer):
-    model = SensorReading
-    field = '__all__'
+    class Meta:
+        model = SensorReading
+        fields = ['sr_id', 'sr_sen', 'sr_measured_value', 'sr_measured_at']
+        read_only_fields = ['sr_id', 'sr_measured_at']
