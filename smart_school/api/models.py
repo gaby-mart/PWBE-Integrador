@@ -80,6 +80,7 @@ class SensorModel(models.Model):
         HUMIDITY = 'UMIDADE', 'Umidade'
         LUMINOSITY = 'LUMINOSIDADE', 'Luminosidade'
         PASSAGE_COUNTER = 'CONTADOR', 'Contagem de Passagens'
+        AIR_QUALITY = 'QUALIDADE_AR', 'Qualidade do Ar'
 
     sm_id = models.AutoField(primary_key=True)
     sm_name = models.CharField(max_length=50, verbose_name="Nome do sensor")

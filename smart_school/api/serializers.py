@@ -64,5 +64,20 @@ class SensorSerializer(serializers.ModelSerializer):
 class SensorReadingSerializer(serializers.ModelSerializer):
     class Meta:
         model = SensorReading
-        fields = ['sr_id', 'sr_sen', 'sr_measured_value', 'sr_measured_at']
+        fields = ['sr_id', 'sr_measured_value', 'sr_measured_at', 'sr_sen']
         read_only_fields = ['sr_id', 'sr_measured_at']
+
+    def validate(self, data):
+        sensor = data.get('sr_sen')
+        
+        if sensor and not sensor.sen_is_active:
+            raise serializers.ValidationError(
+                {"sr_sen": "Não é permitido registrar leituras para um sensor inativo."}
+            )
+            
+        if sensor and sensor.sen_connected_to and not sensor.sen_connected_to.mc_is_active:
+            raise serializers.ValidationError(
+                {"sr_sen": "Não é permitido registrar leituras. O microcontrolador associado a este sensor está inativo."}
+            )
+            
+        return data
