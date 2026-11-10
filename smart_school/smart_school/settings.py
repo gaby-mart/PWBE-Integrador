@@ -51,9 +51,14 @@ INSTALLED_APPS = [
 
     #Minha API
     'api',
+
+    #Configurações do CORS
+    'corsheaders',
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
+    'django.middleware.common.CommonMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -61,6 +66,12 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+]
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",   # Vite
+    "http://127.0.0.1:5173",
+    "http://localhost:3000",   # Create React App / Next
 ]
 
 ROOT_URLCONF = 'smart_school.urls'
@@ -137,7 +148,7 @@ REST_FRAMEWORK = {
 }
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=25),   # Validade de 25 minutos exigida no edital
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),   # Validade de 25 minutos exigida no edital
     'REFRESH_TOKEN_LIFETIME': timedelta(hours=12),  # Validade máxima de 12 horas exigida no edital
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,

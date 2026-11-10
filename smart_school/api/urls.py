@@ -8,6 +8,7 @@ from .viewsMeasurementUnit import MeasuredUnitViewSet
 from .viewSensor import SensorModelViewSet, SensorViewSet, SensorReadingViewSet
 
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from .viewsAuth import CustomTokenObtainPairView, MeView
 
 router = DefaultRouter()
 router.register(r'users', UserViewSet, basename='users')
@@ -21,6 +22,8 @@ router.register(r'sensor-readings', SensorReadingViewSet, basename='sensor-readi
 
 urlpatterns = [
     path('', include(router.urls)),
+    path('token/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('me/', MeView.as_view(), name='me'),
 ]

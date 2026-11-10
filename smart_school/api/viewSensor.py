@@ -9,6 +9,7 @@ from rest_framework.filters import OrderingFilter
 from django.db.models import Min, Max, Avg, Count
 from .models import Sensor, SensorModel, SensorReading
 from .serializers import SensorModelSerializer, SensorSerializer, SensorReadingSerializer
+from rest_framework.pagination import PageNumberPagination
 
 class SensorModelViewSet(viewsets.ModelViewSet):
     queryset = SensorModel.objects.all()
@@ -19,6 +20,12 @@ class SensorViewSet(viewsets.ModelViewSet):
     queryset = Sensor.objects.all()
     serializer_class = SensorSerializer
     permission_classes = [IsSuperUserOrAdminOrReadOnly]
+
+#Páginação para o front
+class ReadingsPagination(PageNumberPagination):
+    page_size = 150  # Número de registros por página
+    page_size_query_param = 'page_size'  
+    max_page_size = 500  # Tamanho máximo da página
 
 class SensorReadingViewSet(viewsets.ModelViewSet):
     queryset = SensorReading.objects.all()
