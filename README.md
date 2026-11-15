@@ -8,9 +8,111 @@ Repositório backend desenvolvido para o Projeto Integrador do SENAI, focado na 
 
 - **Linguagem:** Python 3.x
 - **Framework Web:** Django e Django REST Framework (DRF)
-- **Banco de Dados:** MySQL
+- **Banco de Dados:** MySQL (local) / MariaDB (produção no Alwaysdata)
+- **Autenticação:** JWT (`djangorestframework-simplejwt`)
+- **Documentação:** Swagger e Redoc (`drf-yasg`)
+- **Hospedagem:** Alwaysdata
 - **Filtros e Ordenação:** `django-filter` e `rest_framework.filters`
 - **Testes de API:** Bruno
+
+---
+
+## API em Produção (Alwaysdata)
+
+A API está publicada e pode ser acessada sem instalar nada:
+
+| Recurso | Endereço |
+|---------|----------|
+| Documentação interativa (Swagger) | https://gabrielly.alwaysdata.net/swagger/ |
+| Documentação alternativa (Redoc) | https://gabrielly.alwaysdata.net/redoc/ |
+| Painel administrativo (Django Admin) | https://gabrielly.alwaysdata.net/admin/ |
+| Base da API | https://gabrielly.alwaysdata.net/api/ |
+
+> **Importante:** todas as rotas da API exigem autenticação. Abrir `/api/laboratories/` diretamente no navegador, sem token, retorna erro 401. Isso é o comportamento esperado.
+
+### Como acessar a API pelo Swagger
+
+1. Abra https://gabrielly.alwaysdata.net/swagger/.
+2. Role até a rota **`POST /api/token/`** e clique em **Try it out**.
+3. Preencha o corpo da requisição com seu usuário e senha:
+
+   ```json
+   {
+     "username": "seu_usuario",
+     "password": "sua_senha"
+   }
+   ```
+
+4. Clique em **Execute**. A resposta traz dois tokens:
+
+   ```json
+   {
+     "refresh": "eyJ...",
+     "access": "eyJ..."
+   }
+   ```
+
+5. Copie o valor de **`access`**, clique no botão **Authorize** (cadeado, no topo da página) e digite:
+
+   ```text
+   Bearer SEU_TOKEN_ACCESS
+   ```
+
+   Inclua a palavra `Bearer` e um espaço antes do token. Clique em **Authorize** e depois em **Close**.
+6. Pronto: agora todas as rotas do Swagger funcionam. Teste, por exemplo, `GET /api/laboratories/` ou `GET /api/me/`.
+
+> Não tem usuário? Solicite as credenciais ao responsável pelo projeto. Cada usuário é criado pelo administrador.
+
+### Validade dos tokens
+
+| Token | Validade | Uso |
+|-------|----------|-----|
+| `access` | 60 minutos | Enviado no cabeçalho de cada requisição |
+| `refresh` | 12 horas | Usado em `POST /api/token/refresh/` para gerar um novo `access` |
+
+Quando o `access` expirar (erro 401), renove-o enviando o `refresh`:
+
+```json
+{ "refresh": "eyJ..." }
+```
+
+para `POST /api/token/refresh/`.
+
+### Como acessar a API pelo Bruno, Insomnia ou Postman
+
+1. Faça `POST https://gabrielly.alwaysdata.net/api/token/` com `username` e `password` no corpo (JSON).
+2. Copie o `access` da resposta.
+3. Nas demais requisições, adicione o cabeçalho:
+
+   ```text
+   Authorization: Bearer SEU_TOKEN_ACCESS
+   ```
+
+4. Exemplo: `GET https://gabrielly.alwaysdata.net/api/sensor-readings/`
+
+### Como acessar por código (exemplo em JavaScript)
+
+```javascript
+const BASE_URL = "https://gabrielly.alwaysdata.net/api";
+
+const login = await fetch(`${BASE_URL}/token/`, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ username: "seu_usuario", password: "sua_senha" }),
+});
+const { access } = await login.json();
+
+const resposta = await fetch(`${BASE_URL}/sensors/`, {
+  headers: { Authorization: `Bearer ${access}` },
+});
+const sensores = await resposta.json();
+```
+
+> Se o seu front-end tiver um domínio próprio, ele precisa estar liberado no CORS do servidor. Veja a seção **Deploy no Alwaysdata**.
+
+### Acessando o painel administrativo
+
+Abra https://gabrielly.alwaysdata.net/admin/ e entre com um usuário administrador (`is_staff`). Por ele é possível cadastrar usuários, laboratórios, sensores e outros registros pela interface web.
 
 ---
 
@@ -102,20 +204,37 @@ pip install -r requirements.txt
 
 ### 4. Configurar o banco de dados (MySQL)
 
-Em `smart_school/smart_school/settings.py`, configure as credenciais:
+Crie o banco antes de rodar o projeto (pelo MySQL Workbench ou terminal):
 
-```python
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'nome_do_banco',
-        'USER': 'seu_usuario',
-        'PASSWORD': 'sua_senha',
-        'HOST': 'localhost',
-        'PORT': '3306',
-    }
-}
+```sql
+CREATE DATABASE smart_school_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
+
+O `settings.py` lê as credenciais de **variáveis de ambiente** e, se elas não existirem, usa estes valores padrão para desenvolvimento local:
+
+| Variável | Padrão local |
+|----------|--------------|
+| `DB_NAME` | `smart_school_db` |
+| `DB_USER` | `root` |
+| `DB_PASSWORD` | `root` |
+| `DB_HOST` | `localhost` |
+| `DB_PORT` | `3306` |
+
+Se a senha do seu MySQL local for diferente, defina a variável antes de rodar os comandos:
+
+**Windows (PowerShell):**
+
+```powershell
+$env:DB_PASSWORD="sua_senha"
+```
+
+**Linux/Mac:**
+
+```bash
+export DB_PASSWORD='sua_senha'
+```
+
+> Use Python **3.10 a 3.13** (recomendado 3.12). Versões muito novas podem não ter instaladores prontos de algumas dependências, como o `mysqlclient`.
 
 ### 5. Executar as migrações
 
@@ -218,7 +337,7 @@ Nenhum sensor ativo encontrado.
 
 A API segue o padrão REST, com nomenclaturas, variáveis e rotas em inglês.
 
-> **Permissões:** operações de escrita (`POST`, `PUT`, `PATCH`, `DELETE`) exigem permissão de administrador (`IsSuperUserOrAdminOrReadOnly`). Leituras (`GET`) são públicas.
+> **Permissões:** todas as rotas exigem autenticação via token JWT. Usuários autenticados podem fazer leituras (`GET`). Operações de escrita (`POST`, `PUT`, `PATCH`, `DELETE`) exigem permissão de administrador (`IsSuperUserOrAdminOrReadOnly`), e o gerenciamento de usuários é restrito ao superusuário.
 
 ### 1. Sensor Models: `/api/sensor-models/`
 
@@ -291,5 +410,126 @@ python manage.py runserver
 ```
 
 2. (Opcional) Gere dados de teste com `python manage.py generate_readings`.
-3. Abra o Bruno, crie sua collection e aponte as requisições para `http://127.0.0.1:8000/api/...`
-4. Use os métodos descritos nas tabelas acima para validar as rotas e as regras de negócio.
+3. Crie um usuário administrador: `python manage.py createsuperuser`.
+4. Abra o Bruno, crie sua collection e faça login em `POST http://127.0.0.1:8000/api/token/`.
+5. Envie o `access` no cabeçalho `Authorization: Bearer SEU_TOKEN` e aponte as requisições para `http://127.0.0.1:8000/api/...` (ou para `https://gabrielly.alwaysdata.net/api/...` em produção).
+6. Use os métodos descritos nas tabelas acima para validar as rotas e as regras de negócio.
+
+---
+
+## Deploy no Alwaysdata
+
+Passo a passo para publicar este backend em uma conta do [Alwaysdata](https://www.alwaysdata.com). Os exemplos usam `SEUUSUARIO` no lugar do nome da conta.
+
+### 1. Preparar o código
+
+O `settings.py` já está pronto para produção: `SECRET_KEY`, `DEBUG`, banco, hosts e CORS são lidos de variáveis de ambiente, e os arquivos estáticos são servidos pelo **WhiteNoise**. Antes de publicar, ajuste em `smart_school/smart_school/settings.py` os valores padrão de `ALLOWED_HOSTS` e `CSRF_TRUSTED_ORIGINS` para o seu domínio `SEUUSUARIO.alwaysdata.net` e envie tudo para o GitHub.
+
+### 2. Criar o banco de dados
+
+No painel, em **Databases → MySQL**:
+
+1. Crie um banco (ex.: `smart_school`, que vira `SEUUSUARIO_smart_school`).
+2. Crie um usuário MySQL e dê a ele acesso total ao banco.
+3. O servidor do banco é `mysql-SEUUSUARIO.alwaysdata.net`.
+
+> O Alwaysdata usa MariaDB, compatível com o Django. Para popular o banco, use `popula_csv.py`, não o `popular_db.sql`.
+
+### 3. Ativar o SSH e baixar o projeto
+
+Em **Remote access → SSH/SFTP**, habilite o acesso e defina uma senha. Depois:
+
+```bash
+ssh SEUUSUARIO@ssh-SEUUSUARIO.alwaysdata.net
+cd ~/www
+git clone https://github.com/gaby-mart/PWBE-Integrador.git
+cd PWBE-Integrador
+python3 -m venv .venv
+source .venv/bin/activate
+pip install --upgrade pip
+pip install -r requirements.txt
+```
+
+### 4. Configurar o site
+
+Em **Web → Sites → Add a site**:
+
+| Campo | Valor |
+|-------|-------|
+| Addresses | `SEUUSUARIO.alwaysdata.net` |
+| Type | Python WSGI |
+| Application path | `www/PWBE-Integrador/smart_school/smart_school/wsgi.py` |
+| Working directory | `www/PWBE-Integrador/smart_school` |
+| virtualenv directory | `www/PWBE-Integrador/.venv` |
+| Static paths | deixar **vazio** (o WhiteNoise cuida dos estáticos) |
+
+No campo **Environment variables**, uma por linha, sem aspas:
+
+```text
+SECRET_KEY=uma_chave_longa_e_aleatoria
+DEBUG=False
+DB_NAME=SEUUSUARIO_smart_school
+DB_USER=SEUUSUARIO_usuario_mysql
+DB_PASSWORD=senha_do_banco
+DB_HOST=mysql-SEUUSUARIO.alwaysdata.net
+DB_PORT=3306
+```
+
+Para gerar a `SECRET_KEY`:
+
+```bash
+python -c "import secrets; print(secrets.token_urlsafe(50))"
+```
+
+Para liberar um front-end hospedado em outro domínio, adicione também:
+
+```text
+CORS_EXTRA_ORIGINS=https://seu-front.com
+```
+
+### 5. Criar as tabelas e os dados
+
+No terminal SSH, com o ambiente virtual ativo, exporte as mesmas variáveis (o terminal não lê as do painel) e rode:
+
+```bash
+cd ~/www/PWBE-Integrador/smart_school
+source ../.venv/bin/activate
+
+export DB_NAME=SEUUSUARIO_smart_school
+export DB_USER=SEUUSUARIO_usuario_mysql
+export DB_PASSWORD='senha_do_banco'
+export DB_HOST=mysql-SEUUSUARIO.alwaysdata.net
+export DB_PORT=3306
+export DEBUG=False
+export SECRET_KEY=qualquercoisa
+
+python manage.py migrate
+python manage.py collectstatic --noinput
+python manage.py createsuperuser
+python popula_csv.py
+```
+
+### 6. Reiniciar e testar
+
+Em **Web → Sites**, clique em **Submit** no site para reiniciar e abra `https://SEUUSUARIO.alwaysdata.net/swagger/`.
+
+### Atualizando o site depois
+
+```bash
+cd ~/www/PWBE-Integrador
+git pull
+```
+
+Se alterou dependências ou modelos, rode também `pip install -r requirements.txt` e `python manage.py migrate` (com as variáveis exportadas). Depois reinicie o site no painel (**Web → Sites → Submit**).
+
+### Problemas comuns
+
+| Sintoma | Causa provável |
+|---------|----------------|
+| Swagger ou Admin sem estilo / `404` em `/static/` | WhiteNoise não instalado ou `collectstatic` não executado; deixe **Static paths** vazio |
+| `Can't connect to local server through socket` | Variáveis `DB_*` não definidas (usando `localhost`) |
+| `Access denied for user` | Usuário ou senha do banco incorretos |
+| `DisallowedHost` | Domínio ausente em `ALLOWED_HOSTS` |
+| Erro `403` ao fazer login no `/admin/` | Falta `CSRF_TRUSTED_ORIGINS` com `https://` |
+| Erro de CORS no navegador | Domínio do front-end ausente em `CORS_EXTRA_ORIGINS` |
+| Erro `500` | Consulte o log em **Logs** (no menu do site, no painel) |
